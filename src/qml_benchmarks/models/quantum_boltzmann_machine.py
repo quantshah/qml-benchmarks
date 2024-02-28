@@ -19,7 +19,7 @@ def tensor_ops(ops, idxs, n_qubits):
     """
     Returns a tensor product of two operators acting at indexes idxs in an n_qubit system
     """
-    tensor_op = 1.
+    tensor_op = 1.0
     for i in range(n_qubits):
         if i in idxs:
             j = idxs.index(i)
@@ -32,18 +32,18 @@ def tensor_ops(ops, idxs, n_qubits):
 class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
 
     def __init__(
-            self,
-            visible_qubits='single',
-            observable_type='sum',
-            temperature=1,
-            learning_rate=0.001,
-            batch_size=32,
-            max_vmap=None,
-            jit=True,
-            max_steps=10000,
-            convergence_threshold=1e-6,
-            random_state=42,
-            scaling=1.0
+        self,
+        visible_qubits="single",
+        observable_type="sum",
+        temperature=1,
+        learning_rate=0.001,
+        batch_size=32,
+        max_vmap=None,
+        jit=True,
+        max_steps=10000,
+        convergence_threshold=1e-6,
+        random_state=42,
+        scaling=1.0,
     ):
         """
         Variational Quantum Boltzmann Machine from https://arxiv.org/abs/2006.06004
@@ -133,7 +133,7 @@ class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
 
         def gibbs_state(thetas, x):
 
-            H = jnp.zeros([2 ** self.n_qubits, 2 ** self.n_qubits])
+            H = jnp.zeros([2**self.n_qubits, 2**self.n_qubits])
             count = 0
             for idxs in singles:
                 H = H + tensor_ops([sigmaZ], idxs, self.n_qubits) * jnp.dot(thetas[count], x)
@@ -142,7 +142,9 @@ class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
                 count = count + 1
 
             for idxs in doubles:
-                H = H + tensor_ops([sigmaZ, sigmaZ], idxs, self.n_qubits) * jnp.dot(thetas[count], x)
+                H = H + tensor_ops([sigmaZ, sigmaZ], idxs, self.n_qubits) * jnp.dot(
+                    thetas[count], x
+                )
 
             state = jax.scipy.linalg.expm(-H / self.temperature, max_squarings=32)
             return state / jnp.trace(state)
@@ -151,7 +153,12 @@ class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
             state = gibbs_state(thetas, x)
             return jnp.trace(jnp.matmul(state, obs))
 
+<<<<<<< HEAD
         if self.jit: model = jax.jit(model)
+=======
+        if self.jit:
+            model = jax.jit(model)
+>>>>>>> bf67629 (Add makefile. Run make format. Add catalyst qjit as an option for lightning devices.)
         self.forward = jax.vmap(model, in_axes=(None, 0))
         self.chunked_forward = chunk_vmapped_fn(self.forward, 1, self.max_vmap)
 
@@ -174,11 +181,17 @@ class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
 
         self.n_qubits = n_features
 
-        if self.visible_qubits == 'single':
+        if self.visible_qubits == "single":
             self.n_visible = 1
+<<<<<<< HEAD
         elif self.visible_qubits == 'half':
             self.n_visible = self.n_qubits // 2
         elif self.visible_qubits == 'full':
+=======
+        elif self.visible_qubits == "half":
+            self.n_visible = self.n_qubits // 2
+        elif self.visible_qubits == "all":
+>>>>>>> bf67629 (Add makefile. Run make format. Add catalyst qjit as an option for lightning devices.)
             self.n_visible = self.n_qubits
 
         self.construct_model()
@@ -206,12 +219,13 @@ class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
 
         def loss_fn(params, X, y):
             # binary cross entropy loss
-            vals = self.forward(params['thetas'], X)
+            vals = self.forward(params["thetas"], X)
             probs = (1 + vals) / 2
             y = jax.nn.relu(y)  # convert to 0,1
             return jnp.mean(-y * jnp.log(probs) - (1 - y) * jnp.log(1 - probs))
 
-        if self.jit: loss_fn = jax.jit(loss_fn)
+        if self.jit:
+            loss_fn = jax.jit(loss_fn)
         self.params_ = train(self, loss_fn, optimizer, X, y, self.generate_key)
 
         return self
@@ -240,7 +254,7 @@ class QuantumBoltzmannMachine(BaseEstimator, ClassifierMixin):
             (n_samples, n_classes)
         """
         X = self.transform(X)
-        predictions = self.forward(self.params_['thetas'], X)
+        predictions = self.forward(self.params_["thetas"], X)
         predictions_2d = np.c_[(1 - predictions) / 2, (1 + predictions) / 2]
         return predictions_2d
 
@@ -266,6 +280,7 @@ class QuantumBoltzmannMachineSeparable(QuantumBoltzmannMachine):
             return state / jnp.trace(state)
 
         def model(thetas, x):
+<<<<<<< HEAD
             gibbs_states = [qubit_gibbs_state(thetas[2 * i:2 * i + 2, :], x) for i in range(self.n_visible)]
             expvals = jnp.array([jnp.trace(jnp.matmul(state, sigmaZ)) for state in gibbs_states])
             if self.observable_type == 'sum':
@@ -274,6 +289,19 @@ class QuantumBoltzmannMachineSeparable(QuantumBoltzmannMachine):
                 return jnp.prod(expvals)
 
         if self.jit: model = jax.jit(model)
+=======
+            gibbs_states = [
+                qubit_gibbs_state(thetas[2 * i : 2 * i + 2, :], x) for i in range(self.n_visible)
+            ]
+            expvals = jnp.array([jnp.trace(jnp.matmul(state, sigmaZ)) for state in gibbs_states])
+            if self.observable_type == "sum":
+                return jnp.mean(expvals)
+            elif self.observable_type == "product":
+                return jnp.prod(expvals)
+
+        if self.jit:
+            model = jax.jit(model)
+>>>>>>> bf67629 (Add makefile. Run make format. Add catalyst qjit as an option for lightning devices.)
         self.forward = jax.vmap(model, in_axes=(None, 0))
         self.chunked_forward = chunk_vmapped_fn(self.forward, 1, self.max_vmap)
 
@@ -281,5 +309,11 @@ class QuantumBoltzmannMachineSeparable(QuantumBoltzmannMachine):
 
     def initialize_params(self):
         # initialise the trainable parameters
+<<<<<<< HEAD
         params = jax.random.normal(shape=(2 * self.n_qubits, self.n_qubits), key=self.generate_key())
+=======
+        params = jax.random.normal(
+            shape=(2 * self.n_qubits, self.n_qubits), key=self.generate_key()
+        )
+>>>>>>> bf67629 (Add makefile. Run make format. Add catalyst qjit as an option for lightning devices.)
         self.params_ = {"thetas": params}
